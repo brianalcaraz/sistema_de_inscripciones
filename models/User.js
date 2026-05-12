@@ -1,5 +1,4 @@
 class User {
-   
     constructor(id, name, email, password) {
         this.id = id;
         this.name = name;
@@ -8,4 +7,4 @@ class User {
     }
 }
 
-module.exports = User;
+export default User;

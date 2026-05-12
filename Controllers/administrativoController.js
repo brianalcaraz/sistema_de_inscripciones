@@ -1,8 +1,11 @@
-//Usamos estas librerías nativas de Node.js para interactuar con nuestro archivo JSON, que actúa como persistencia de datos
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Administrativo from '../models/Administrativo.js';
 
-const Administrativo = require('../models/Administrativo.js');
+// En ES6 con módulos, __dirname no existe de forma nativa, hay que reconstruirlo
+const __filename = fileURLToPath(import.meta.url); // Obtiene la ruta completa del archivo actual
+const __dirname = path.dirname(__filename); // Le saca el nombre del archivo y te queda solo el directorio
 
 const rutaArchivo = path.join(__dirname, '../data/administrativos.json');
 
@@ -15,35 +18,32 @@ const guardarAdministrativos = (lista) => {
     fs.writeFileSync(rutaArchivo, JSON.stringify(lista, null, 2));
 };
 
-
-//Esto es clave por seguridad. Es una función helper que intercepta el objeto del empleado y le quita la contraseña antes de enviarlo a las vistas o a la API, para que nunca quede expuesta en el navegador
+// Helper: quita la contraseña antes de enviar datos a vistas o API
 const omitPassword = (admin) => {
     const { password, ...adminSinPassword } = admin;
     return adminSinPassword;
 };
 
 // RENDERIZAR VISTAS
-//Lee el JSON, filtra las contraseñas con el helper, y usa res.render('administrativos/lista', ...) para inyectar esos datos dentro de la plantilla Pug y devolver el HTML armado.
-exports.getAdministrativos = (req, res) => {
+const getAdministrativos = (req, res) => {
     const lista = leerAdministrativos();
     res.render('administrativos/lista', { administrativos: lista.map(omitPassword) });
 };
 
-exports.getRegisterForm = (req, res) => {
+const getRegisterForm = (req, res) => {
     res.render('administrativos/registrar');
 };
 
-exports.getEditForm = (req, res) => {
+const getEditForm = (req, res) => {
     const lista = leerAdministrativos();
     const admin = lista.find(a => a.id === parseInt(req.params.id));
     if (!admin) return res.status(404).send("Administrativo no encontrado");
-    
+
     res.render('administrativos/editar', { admin });
 };
 
-// --- PROCESAR DATOS (POST / API) ---
-
-exports.getAdministrativoById = (req, res) => {
+// PROCESAR DATOS (POST / API)
+const getAdministrativoById = (req, res) => {
     const lista = leerAdministrativos();
     const admin = lista.find(a => a.id === parseInt(req.params.id));
     if (!admin) return res.status(404).json({ error: "Administrativo no encontrado" });
@@ -51,8 +51,7 @@ exports.getAdministrativoById = (req, res) => {
     res.json({ data: omitPassword(admin) });
 };
 
-//Recibe los datos del formulario (req.body), instancia un nuevo objeto de la clase Administrativo, lo pushea al array y lo guarda en el disco. La clave acá es el res.redirect('/api/administrativos'), que le dice al navegador que vuelva a cargar la lista para ver el cambio reflejado inmediatamente, completando el ciclo web.
-exports.createAdministrativo = (req, res) => {
+const createAdministrativo = (req, res) => {
     const { id, name, email, password, rol, area } = req.body;
     const lista = leerAdministrativos();
 
@@ -60,12 +59,10 @@ exports.createAdministrativo = (req, res) => {
     lista.push(nuevoAdmin);
     guardarAdministrativos(lista);
 
-    // Redirige a la lista
     res.redirect('/api/administrativos');
 };
 
-// UPDATE
-exports.updateAdministrativo = (req, res) => {
+const updateAdministrativo = (req, res) => {
     const lista = leerAdministrativos();
     const index = lista.findIndex(a => a.id === parseInt(req.params.id));
     if (index === -1) return res.status(404).send("Administrativo no encontrado");
@@ -79,21 +76,25 @@ exports.updateAdministrativo = (req, res) => {
     if (area) lista[index].area = area;
 
     guardarAdministrativos(lista);
-
-    // Termina de guardar y te manda de vuelta a la pantalla de la lista
     res.redirect('/api/administrativos');
 };
 
-// DELETE
-exports.deleteAdministrativo = (req, res) => {
+const deleteAdministrativo = (req, res) => {
     const lista = leerAdministrativos();
     const index = lista.findIndex(a => a.id === parseInt(req.params.id));
     if (index === -1) return res.status(404).send("Administrativo no encontrado");
 
-    // Lo saca del array
     lista.splice(index, 1);
     guardarAdministrativos(lista);
-
-    // Termina de borrar y te manda de vuelta a la pantalla de la lista
     res.redirect('/api/administrativos');
+};
+
+export default {
+    getAdministrativos,
+    getRegisterForm,
+    getEditForm,
+    getAdministrativoById,
+    createAdministrativo,
+    updateAdministrativo,
+    deleteAdministrativo
 };
